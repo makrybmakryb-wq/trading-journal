@@ -1,0 +1,77 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-bg: #0b0f17;
+  --color-panel: #121826;
+  --color-panel-2: #172033;
+  --color-line: #222c3f;
+  --color-ink: #e6e9f0;
+  --color-muted: #8791a5;
+  --color-gain: #22c55e;
+  --color-loss: #ef4444;
+  --color-accent: #4f8cff;
+  --color-warn: #f59e0b;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Champs de formulaire cohérents avec le thème sombre */
+.field {
+  @apply w-full rounded-lg border border-line bg-panel-2 px-3 py-2 text-sm text-ink placeholder:text-muted/60 outline-none transition;
+  @apply focus:border-accent focus:ring-2 focus:ring-accent/25;
+}
+.field[aria-invalid='true'] {
+  @apply border-loss focus:border-loss focus:ring-loss/25;
+}
+select.field {
+  color-scheme: dark;
+}
+input[type='date'].field,
+input[type='time'].field {
+  color-scheme: dark;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+}
+.btn-primary {
+  @apply bg-accent text-white hover:brightness-110;
+}
+.btn-ghost {
+  @apply border border-line bg-panel-2 text-ink hover:border-muted/50;
+}
+.btn-danger {
+  @apply bg-loss/15 text-loss hover:bg-loss/25;
+}
+
+.card {
+  @apply rounded-xl border border-line bg-panel;
+}
+
+/* Barre de défilement discrète */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2b3750 transparent;
+}
+
+/* Recharts : texte des axes lisible sur fond sombre */
+.recharts-text {
+  fill: var(--color-muted);
+  font-size: 12px;
+}
+.recharts-cartesian-grid line {
+  stroke: #1c2536;
+}
