@@ -88,7 +88,7 @@ export function TradeFormModal({
     return auto.autoGross === null || Math.abs(auto.autoGross - trade.grossResult) > 0.005
   })
   const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(trade?.screenshot ? `/uploads/${trade.screenshot}` : null)
+  const [preview, setPreview] = useState<string | null>(trade?.screenshot ?? null)
   const [removeShot, setRemoveShot] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState<string | null>(null)

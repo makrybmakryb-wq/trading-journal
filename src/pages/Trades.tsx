@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, Download, Paperclip, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { MARKETS, type Trade } from '../../shared/types'
 import { useStore } from '../lib/store'
+import { exportCsv } from '../lib/backup'
 import { fmtDate, fmtMoney, fmtNum, fmtPct, pnlColor } from '../lib/format'
 import { PeriodFilter, usePeriod } from '../components/PeriodFilter'
 
@@ -65,9 +66,9 @@ export function TradesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <a href="/api/export.csv" className="btn btn-ghost">
+          <button className="btn btn-ghost" onClick={() => exportCsv(trades)} disabled={!trades.length}>
             <Download size={15} /> CSV
-          </a>
+          </button>
           <button className="btn btn-primary" onClick={() => openForm()}>
             <Plus size={16} /> Nouveau trade
           </button>

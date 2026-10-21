@@ -4,33 +4,26 @@
   "description": "Journal de trading personnel",
   "scripts": {
     "test": "tsx shared/stats.test.ts",
-    "dev": "concurrently -k -n api,web -c blue,green \"tsx watch server/index.ts\" \"vite\"",
-    "build": "vite build",
-    "start": "NODE_ENV=production tsx server/index.ts",
     "typecheck": "tsc --noEmit",
-    "seed": "tsx server/seed.ts"
+    "dev": "vite",
+    "build": "vite build",
+    "build:pages": "vite build --outDir docs --emptyOutDir",
+    "preview": "vite preview",
+    "start": "vite build && vite preview"
   },
   "dependencies": {
-    "better-sqlite3": "^13.0.3",
-    "express": "^5.3.0",
     "lucide-react": "^1.61.0",
-    "multer": "^2.4.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.4",
-    "recharts": "^3.10.1",
-    "zod": "^4.6.7"
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "@types/better-sqlite3": "^9.6.0",
-    "@types/express": "^5.0.6",
-    "@types/multer": "^2.3.0",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "concurrently": "^10.0.6",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",

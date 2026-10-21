@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { computeStats } from '../../shared/stats'
 import { useStore } from '../lib/store'
+import { seedDemo } from '../lib/seed'
 import { fmtDate, fmtMoney, fmtNum, fmtPct, mainCurrency, pnlColor } from '../lib/format'
 import { PeriodFilter, usePeriod } from '../components/PeriodFilter'
 import { StatCard } from '../components/StatCard'
 import { EquityChart, GroupChart, PnlBarChart, WinLossPie } from '../components/Charts'
 
 export function Dashboard() {
-  const { trades, openForm, openDetail, startingCapital } = useStore()
+  const { trades, openForm, openDetail, startingCapital, reload } = useStore()
   const p = usePeriod(trades, 'all')
   const stats = useMemo(() => computeStats(p.filtered), [p.filtered])
   const cur = mainCurrency(trades)
@@ -23,9 +24,15 @@ export function Dashboard() {
         <button className="btn btn-primary mt-6" onClick={() => openForm()}>
           <Plus size={16} /> Ajouter mon premier trade
         </button>
-        <p className="mt-6 text-xs text-muted">
-          Pour tester avec des données fictives : <code className="rounded bg-panel-2 px-1.5 py-0.5 font-mono">npm run seed</code>
-        </p>
+        <button
+          className="mt-4 text-xs text-muted underline hover:text-ink"
+          onClick={async () => {
+            await seedDemo()
+            await reload()
+          }}
+        >
+          ou charger des données de démonstration pour tout essayer
+        </button>
       </div>
     )
   }

@@ -57,8 +57,8 @@ export function TradeDetailModal({
         </div>
 
         {t.screenshot && (
-          <a href={`/uploads/${t.screenshot}`} target="_blank" rel="noreferrer">
-            <img src={`/uploads/${t.screenshot}`} alt="Capture du graphique" className="max-h-96 rounded-lg border border-line" />
+          <a href={t.screenshot} target="_blank" rel="noreferrer">
+            <img src={t.screenshot} alt="Capture du graphique" className="max-h-96 rounded-lg border border-line" />
           </a>
         )}
 

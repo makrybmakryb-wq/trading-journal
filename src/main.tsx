@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { HashRouter, Route, Routes } from 'react-router-dom'
 import './index.css'
 import { StoreProvider } from './lib/store'
 import { Layout } from './components/Layout'
@@ -12,7 +12,7 @@ import { SettingsPage } from './pages/Settings'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    <HashRouter>
       <StoreProvider>
         <Routes>
           <Route element={<Layout />}>
@@ -25,6 +25,6 @@ createRoot(document.getElementById('root')!).render(
           </Route>
         </Routes>
       </StoreProvider>
-    </BrowserRouter>
+    </HashRouter>
   </StrictMode>,
 )

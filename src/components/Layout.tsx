@@ -85,7 +85,7 @@ export function Layout() {
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {error && (
             <div className="mb-4 rounded-lg border border-loss/40 bg-loss/10 px-4 py-3 text-sm text-loss">
-              Impossible de joindre le serveur : {error}. Vérifiez que <code className="font-mono">npm start</code> tourne bien.
+              Impossible d’accéder au stockage du navigateur : {error}
             </div>
           )}
           {loading ? <p className="py-20 text-center text-muted">Chargement…</p> : <Outlet />}

@@ -1,62 +1,57 @@
 # 📈 Journal de trading
 
-Application web locale pour enregistrer, consulter, modifier, supprimer et analyser vos trades.
-Interface sombre, tableau de bord, 6 types de graphiques, calendrier interactif, formulaire complet avec calculs automatiques.
+Journal de trading personnel : enregistrez, modifiez, supprimez et analysez vos trades.
+Tableau de bord, graphiques, calendrier, formulaire avec calculs automatiques. 100 % dans le navigateur, sans serveur.
 
-## Installation et lancement
+**Site en ligne :** https://makrybmakryb-wq.github.io/trading-journal/
 
-Prérequis : **Node.js 20 ou plus** (`node -v` pour vérifier). Dans un terminal, depuis ce dossier :
+## ⚠️ Où sont mes données ?
 
+Dans **votre navigateur, sur votre appareil** (IndexedDB). Rien n'est envoyé sur Internet, et le dépôt GitHub ne contient jamais vos trades.
+Conséquences : pas de synchronisation PC ↔ téléphone, et perte possible si vous videz les données du site.
+👉 **Paramètres → Télécharger une sauvegarde** régulièrement (fichier `.json`, captures comprises), et « Restaurer » pour la remettre sur un autre appareil.
+
+## Publier sur GitHub Pages
+
+Le site compilé est dans le dossier `docs/`.
+
+1. Déposez le contenu de ce projet dans le dépôt (en conservant `docs/`).
+2. GitHub → **Settings → Pages → Build and deployment** → Source : *Deploy from a branch* → Branch : `main`, dossier **`/docs`** → Save.
+3. Après 1 à 2 minutes : https://makrybmakryb-wq.github.io/trading-journal/
+
+Après toute modification du code : `npm run build:pages`, puis commit + push de `docs/`.
+
+## Lancer en local
+
+Prérequis : Node.js 20+.
 ```bash
-npm install        # installe les dépendances (une seule fois)
-npm run build      # compile l'interface (à refaire si vous modifiez le code de src/)
-npm start          # lance le site → http://localhost:3000
+npm install
+npm run dev        # développement → http://localhost:3000
+npm run start      # compile puis sert la version finale → http://localhost:3000
+npm test           # vérifie les formules
 ```
-
-Pour tester avec des données fictives (≈ 100 trades) : `npm run seed` (avant ou après `npm start`).
-
-Mode développement (rechargement automatique, interface sur http://localhost:5173) : `npm run dev`.
-Vérifier les formules : `npm test`. Vérifier les types : `npm run typecheck`.
-
-## Où sont mes données ?
-
-Dans le dossier `data/` (créé automatiquement) : `journal.db` (SQLite) et `uploads/` (captures d'écran).
-Elles survivent aux redémarrages. **Sauvegarde = copier le dossier `data/`.** Export CSV : page Paramètres ou bouton « CSV » du journal.
 
 ## Architecture
 
-| Fichier / dossier | Rôle |
+| Fichier | Rôle |
 |---|---|
-| `server/index.ts` | Serveur Express : API REST (`/api/trades`…), validation (zod), envoi des captures, sert l'interface compilée |
-| `server/db.ts` | Base SQLite (better-sqlite3) : création de la table, conversion lignes ⇄ objets |
-| `server/seed.ts` | Données de démonstration |
-| `shared/calc.ts` | Calculs d'un trade (brut, net, %, R) — utilisés par le serveur **et** l'aperçu du formulaire |
-| `shared/stats.ts` | Tous les indicateurs du tableau de bord et regroupements des graphiques |
-| `src/pages/` | Tableau de bord, Journal, Calendrier, Analyses, Paramètres |
-| `src/components/` | Formulaire de trade, graphiques (Recharts), filtres de période, fenêtres modales |
+| `src/lib/db.ts` | Stockage IndexedDB (trades) |
+| `src/lib/api.ts` | Ajout / modification / suppression, calculs, réduction des captures d'écran |
+| `src/lib/backup.ts` | Sauvegarde JSON, restauration, export CSV |
+| `src/lib/seed.ts` | Données de démonstration (bouton sur le tableau de bord vide) |
+| `shared/calc.ts` | Calculs d'un trade (brut, net, %, R) |
+| `shared/stats.ts` | Tous les indicateurs et regroupements des graphiques |
+| `src/pages/`, `src/components/` | Interface (React, Tailwind, Recharts) |
 
-Choix techniques : React + Vite + TypeScript + Tailwind + Recharts pour l'interface ; Express + SQLite pour la persistance.
-J'ai utilisé `better-sqlite3` plutôt que Prisma : même base SQLite, mais sans étape de génération ni téléchargement de moteur, donc plus simple à installer.
+Les pages utilisent des adresses de type `…/trading-journal/#/trades` (routage par `#`), nécessaire sur GitHub Pages.
 
 ## Formules
 
-**Par trade** (`shared/calc.ts`)
-- Brut = (sortie − entrée) × quantité (long) ; (entrée − sortie) × quantité (short). Vous pouvez aussi saisir le brut à la main (utile en Forex/CFD).
-- Net = brut − frais
-- Gain/perte % = net ÷ (entrée × quantité) × 100
-- Risque = risque prévu saisi, sinon |entrée − stop-loss| × quantité
-- Ratio R réalisé = net ÷ risque
+**Par trade** — Brut = (sortie − entrée) × quantité (long) ou (entrée − sortie) × quantité (short), ou saisi à la main (Forex/CFD). Net = brut − frais. Gain/perte % = net ÷ (entrée × quantité) × 100. Risque = risque prévu, sinon |entrée − stop| × quantité. Ratio R = net ÷ risque.
 
-**Tableau de bord** (`shared/stats.ts`)
-- Taux de réussite = gagnants ÷ (gagnants + perdants) × 100 (équilibre exclu)
-- Profit brut / perte brute = somme des nets positifs / négatifs
-- Gain moyen / perte moyenne = profit brut ÷ nb gagnants / perte brute ÷ nb perdants
-- Profit factor = profit brut ÷ |perte brute|
-- Drawdown maximal = plus grande baisse du capital cumulé depuis un plus-haut
-- Risque/rendement moyen = moyenne des R réalisés (trades dont le risque est connu)
-- Espérance = P&L net ÷ nombre de trades
+**Tableau de bord** — Taux de réussite = gagnants ÷ (gagnants + perdants) (équilibre exclu). Profit brut / perte brute = somme des nets positifs / négatifs. Gain / perte moyens = ÷ nombre de gagnants / perdants. Profit factor = profit brut ÷ |perte brute|. Drawdown maximal = plus grande baisse du capital cumulé depuis un plus-haut. Risque/rendement moyen = moyenne des R. Espérance = P&L net ÷ nombre de trades.
 
-## Limites connues
+## Limites
 
-- Pas de conversion de devises : les totaux additionnent les résultats tels quels.
-- Application mono-utilisateur, sans authentification (prévue pour un usage local).
+- Pas de conversion de devises (totaux additionnés tels quels).
+- Les captures d'écran sont réduites (1600 px max, JPEG) pour économiser l'espace du navigateur.

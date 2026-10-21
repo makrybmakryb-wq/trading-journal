@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Trade } from '../../shared/types'
 import { api } from './api'
+import { requestPersistentStorage } from './db'
 import { TradeFormModal } from '../components/TradeForm'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { TradeDetailModal } from '../components/TradeDetail'
@@ -58,6 +59,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    requestPersistentStorage()
     reload()
   }, [reload])
 
