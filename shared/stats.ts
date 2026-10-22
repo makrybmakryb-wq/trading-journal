@@ -248,3 +248,60 @@ export function periodRange(
 export function filterByRange(trades: Trade[], from: string | null, to: string | null): Trade[] {
   return trades.filter((t) => (!from || t.date >= from) && (!to || t.date <= to))
 }
+
+// ---------- Profits / pertes par catégorie (jour de la semaine, tranche horaire) ----------
+
+export interface SplitStat {
+  name: string
+  /** somme des trades gagnants (≥ 0) */
+  profit: number
+  /** somme des trades perdants, en valeur absolue (≥ 0) */
+  loss: number
+  net: number
+  trades: number
+}
+
+/** Regroupe les trades dans des catégories ordonnées (toutes affichées, même vides). */
+export function splitBy(trades: Trade[], order: string[], keyOf: (t: Trade) => string | null): SplitStat[] {
+  const map = new Map<string, SplitStat>(order.map((name) => [name, { name, profit: 0, loss: 0, net: 0, trades: 0 }]))
+  for (const t of trades) {
+    const k = keyOf(t)
+    const b = k === null ? undefined : map.get(k)
+    if (!b) continue
+    if (t.netResult > 0) b.profit += t.netResult
+    else if (t.netResult < 0) b.loss += -t.netResult
+    b.net += t.netResult
+    b.trades += 1
+  }
+  return [...map.values()].map((b) => ({ ...b, profit: round2(b.profit), loss: round2(b.loss), net: round2(b.net) }))
+}
+
+export const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+export const weekdayOf = (date: string) => WEEKDAY_LABELS[(new Date(date + 'T12:00:00').getDay() + 6) % 7]
+
+export const pnlByWeekday = (trades: Trade[]) => splitBy(trades, WEEKDAY_LABELS, (t) => weekdayOf(t.date))
+
+/** Tranches de 30 min de 15:30 à 20:00 ; tout ce qui est après 20:00 va dans « Plus ». */
+const SLOT_START = 15 * 60 + 30
+const SLOT_END = 20 * 60
+export const HALF_HOUR_LABELS = (() => {
+  const l: string[] = []
+  for (let m = SLOT_START; m < SLOT_END; m += 30) l.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`)
+  return [...l, 'Plus']
+})()
+export const BEFORE_LABEL = 'Avant'
+
+/** Tranche d'une heure d'entrée « HH:MM ». Avant 15:30 → « Avant » (affichée seulement si utilisée). */
+export function halfHourSlot(time: string | null): string | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(time ?? '')
+  if (!m) return null
+  const mins = Number(m[1]) * 60 + Number(m[2])
+  if (mins < SLOT_START) return BEFORE_LABEL
+  if (mins >= SLOT_END) return 'Plus'
+  return HALF_HOUR_LABELS[Math.floor((mins - SLOT_START) / 30)]
+}
+
+export function pnlByHalfHour(trades: Trade[]): SplitStat[] {
+  const all = splitBy(trades, [BEFORE_LABEL, ...HALF_HOUR_LABELS], (t) => halfHourSlot(t.entryTime))
+  return all.filter((s) => s.name !== BEFORE_LABEL || s.trades > 0)
+}

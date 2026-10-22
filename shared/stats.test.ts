@@ -1,24 +1,37 @@
 // Tests rapides des formules : npm test
 import assert from 'node:assert/strict'
 import { computeTrade } from './calc'
-import { computeStats, equityCurve, pnlByPeriod, weekStart, periodRange } from './stats'
+import { suggestQuantity } from './sizing'
+import { computeStats, equityCurve, pnlByPeriod, weekStart, periodRange, pnlByHalfHour, halfHourSlot, pnlByWeekday } from './stats'
 import type { Trade } from './types'
 
 // --- calc ---
-const long = computeTrade({ direction: 'long', entryPrice: 100, exitPrice: 110, quantity: 10, fees: 5, stopLoss: 95 })
+// Long 10 @100 → 110 : brut 100 ; frais 0,0005 × 10 × 210 = 1,05 ; net 98,95
+const long = computeTrade({ direction: 'long', entryPrice: 100, exitPrice: 110, quantity: 10, touched: 'TP', rr: 2 })
 assert.equal(long.grossResult, 100)
-assert.equal(long.netResult, 95)
-assert.equal(long.resultPct, 9.5) // 95 / 1000
-assert.equal(long.riskUsed, 50) // |100-95| × 10
-assert.equal(long.rrRealized, 1.9)
+assert.equal(long.fees, 1.05)
+assert.equal(long.netResult, 98.95)
+assert.equal(long.riskUsed, 50) // TP touché : gain brut 100 ÷ RR 2
+assert.equal(long.rrRealized, 1.979)
 
-const short = computeTrade({ direction: 'short', entryPrice: 100, exitPrice: 90, quantity: 2, fees: 1 })
-assert.equal(short.grossResult, 20)
-assert.equal(short.netResult, 19)
+const short = computeTrade({ direction: 'short', entryPrice: 100, exitPrice: 105, quantity: 2, touched: 'SL' })
+assert.equal(short.grossResult, -10)
+assert.equal(short.riskUsed, 10) // SL touché : perte brute
+assert.equal(computeTrade({ direction: 'long' }).autoGross, null)
 
-const manual = computeTrade({ direction: 'long', grossResult: -40, fees: 2, plannedRisk: 40 })
-assert.equal(manual.netResult, -42)
-assert.equal(manual.rrRealized, -1.05)
+// --- taille de position ---
+const prior = (id: number, date: string, net: number, quantity: number) => ({ id, date, entryTime: null, netResult: net, quantity })
+let sz = suggestQuantity([], 100000, 50000)
+assert.equal(sz.quantity, 1.8) // 90 % de 100 000 ÷ 50 000
+assert.equal(sz.recalculated, true)
+// capital 100 500, position 1,8 × 50 000 = 90 000 (89,5 % du capital) → on garde 1,8
+sz = suggestQuantity([prior(1, '2026-01-01', 500, 1.8)], 100000, 50000)
+assert.equal(sz.quantity, 1.8)
+assert.equal(sz.recalculated, false)
+// capital 112 600 : 90 000 = 79,9 % (≤ 80 %) → nouvelle quantité = 90 % × 112 600 ÷ 50 000
+sz = suggestQuantity([prior(1, '2026-01-01', 12600, 1.8)], 100000, 50000)
+assert.equal(sz.recalculated, true)
+assert.equal(sz.quantity, 2.0268)
 
 // --- stats ---
 const mk = (id: number, date: string, net: number): Trade =>
@@ -50,5 +63,14 @@ assert.equal(pnlByPeriod(trades, 'month')[0].pnl, 80)
 
 assert.equal(weekStart('2026-10-21'), '2026-10-19') // mercredi → lundi
 assert.deepEqual(periodRange('month', new Date(2026, 1, 10)), { from: '2026-02-01', to: '2026-02-28' })
+
+// --- tranches horaires ---
+assert.equal(halfHourSlot('15:29'), 'Avant')
+assert.equal(halfHourSlot('15:30'), '15:30')
+assert.equal(halfHourSlot('19:59'), '19:30')
+assert.equal(halfHourSlot('20:00'), 'Plus')
+assert.equal(pnlByHalfHour([]).length, 10) // 15:30 … 19:30 (9 tranches) + « Plus »
+const wd = pnlByWeekday([{ ...mk(1, '2026-01-05', 100) }, { ...mk(2, '2026-01-05', -40) }])
+assert.deepEqual(wd[0], { name: 'Lun', profit: 100, loss: 40, net: 60, trades: 2 })
 
 console.log('✅ Tous les tests passent')

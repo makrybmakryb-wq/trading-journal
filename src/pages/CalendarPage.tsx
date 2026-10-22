@@ -127,7 +127,7 @@ export function CalendarPage() {
                     <span className="font-medium">
                       {t.asset} <span className={`text-xs ${t.direction === 'long' ? 'text-gain' : 'text-loss'}`}>{t.direction === 'long' ? '▲' : '▼'}</span>
                     </span>
-                    <span className={`tabular-nums ${pnlColor(t.netResult)}`}>{fmtMoney(t.netResult, t.currency, true)}</span>
+                    <span className={`tabular-nums ${pnlColor(t.netResult)}`}>{fmtMoney(t.netResult, 'USD', true)}</span>
                   </div>
                   <div className="text-xs text-muted">{[t.entryTime, t.strategy].filter(Boolean).join(' · ') || t.market}</div>
                 </button>

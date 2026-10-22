@@ -15,7 +15,7 @@ export function TradeDetailModal({
   onEdit: (t: Trade) => void
   onDelete: (t: Trade) => void
 }) {
-  const cur = t.currency
+  const cur = 'USD'
   return (
     <Modal title={`${t.asset} · ${fmtDate(t.date)}`} onClose={onClose} size="lg">
       <div className="space-y-5">
@@ -36,18 +36,16 @@ export function TradeDetailModal({
           <Item label="Prix de sortie" value={fmtNum(t.exitPrice, 6)} />
           <Item label="Quantité" value={fmtNum(t.quantity, 6)} />
           <Item label="Taille de position" value={fmtNum(t.positionSize, 6)} />
-          <Item label="Stop-loss" value={fmtNum(t.stopLoss, 6)} />
-          <Item label="Take-profit" value={fmtNum(t.takeProfit, 6)} />
-          <Item label="Risque prévu" value={fmtMoney(t.plannedRisk, cur)} />
+          <Item label="Touché" value={t.touched ?? '—'} color={t.touched === 'TP' ? 'text-gain' : t.touched === 'SL' ? 'text-loss' : ''} />
+          <Item label="RR" value={t.rr === null || t.rr === undefined ? '—' : fmtNum(t.rr, 2)} />
+          <Item label="Risque" value={fmtMoney(t.plannedRisk, cur)} />
           <Item label="Frais" value={fmtMoney(t.fees, cur)} />
           <Item label="Résultat brut" value={fmtMoney(t.grossResult, cur, true)} color={pnlColor(t.grossResult)} />
           <Item label="Résultat net" value={fmtMoney(t.netResult, cur, true)} color={pnlColor(t.netResult)} />
           <Item label="Gain / perte %" value={fmtPct(t.resultPct, 2, true)} color={pnlColor(t.resultPct)} />
           <Item label="Ratio R réalisé" value={t.rrRealized === null ? '—' : `${fmtNum(t.rrRealized, 2)} R`} color={pnlColor(t.rrRealized)} />
-          <Item label="Stratégie" value={t.strategy ?? '—'} />
-          <Item label="Configuration" value={t.setup ?? '—'} />
           <Item label="Plan respecté" value={t.followedPlan === null ? '—' : t.followedPlan ? 'Oui ✓' : 'Non ✗'} color={t.followedPlan === null ? '' : t.followedPlan ? 'text-gain' : 'text-loss'} />
-          <Item label="Émotion" value={t.emotion ?? '—'} />
+          <Item label="Stratégie" value={t.strategy ?? '—'} />
         </div>
 
         <Note title="Commentaire / analyse" text={t.comment} />

@@ -37,7 +37,7 @@ export function TradesPage() {
         (!direction || t.direction === direction) &&
         (!strategy || t.strategy === strategy) &&
         (!outcome || (outcome === 'win' ? t.netResult > 0 : outcome === 'loss' ? t.netResult < 0 : t.netResult === 0)) &&
-        (!needle || [t.asset, t.strategy, t.setup, t.comment, t.mistakes, t.lessons, t.emotion].some((v) => v?.toLowerCase().includes(needle))),
+        (!needle || [t.asset, t.strategy, t.comment, t.mistakes, t.lessons].some((v) => v?.toLowerCase().includes(needle))),
     )
     const m = sort.dir === 'asc' ? 1 : -1
     const val = (t: Trade) => (sort.key === 'date' ? t.date + (t.entryTime ?? '') : t[sort.key] ?? (typeof t[sort.key] === 'number' ? 0 : ''))
@@ -52,7 +52,7 @@ export function TradesPage() {
   }, [p.filtered, q, market, direction, strategy, outcome, sort])
 
   const total = rows.reduce((s, t) => s + t.netResult, 0)
-  const cur = rows[0]?.currency ?? 'EUR'
+  const cur = 'USD'
   const toggle = (key: SortKey) => setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'asset' || key === 'strategy' ? 'asc' : 'desc' }))
   const filtersOn = q || market || direction || strategy || outcome
 
@@ -134,7 +134,7 @@ export function TradesPage() {
                 <td className="hidden px-4 py-3 text-muted md:table-cell">{t.strategy ?? '—'}</td>
                 <td className={`hidden px-4 py-3 text-right tabular-nums sm:table-cell ${pnlColor(t.rrRealized)}`}>{t.rrRealized === null ? '—' : fmtNum(t.rrRealized, 2)}</td>
                 <td className={`px-4 py-3 text-right font-medium tabular-nums ${pnlColor(t.netResult)}`}>
-                  {fmtMoney(t.netResult, t.currency, true)}
+                  {fmtMoney(t.netResult, 'USD', true)}
                   <div className="text-xs font-normal opacity-70">{fmtPct(t.resultPct, 2, true)}</div>
                 </td>
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>

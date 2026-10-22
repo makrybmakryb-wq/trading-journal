@@ -3,7 +3,7 @@ const money0 = nf(0, 2)
 
 export const CURRENCY_SYMBOLS: Record<string, string> = { EUR: '€', USD: '$', GBP: '£', CHF: 'CHF', JPY: '¥', USDT: 'USDT', BTC: 'BTC' }
 
-export function fmtMoney(v: number | null | undefined, currency = 'EUR', sign = false): string {
+export function fmtMoney(v: number | null | undefined, currency = 'USD', sign = false): string {
   if (v === null || v === undefined || Number.isNaN(v)) return '—'
   const s = money0.format(Math.abs(v))
   const prefix = v < 0 ? '−' : sign && v > 0 ? '+' : ''
@@ -35,9 +35,5 @@ export const fmtMonthKey = (key: string) => {
 /** Classe Tailwind selon le signe : vert / rouge / neutre. */
 export const pnlColor = (v: number | null | undefined) => (!v ? 'text-muted' : v > 0 ? 'text-gain' : 'text-loss')
 
-/** Devise la plus utilisée dans une liste de trades (pour afficher les totaux). */
-export function mainCurrency(trades: { currency: string }[]): string {
-  const count = new Map<string, number>()
-  for (const t of trades) count.set(t.currency, (count.get(t.currency) ?? 0) + 1)
-  return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'EUR'
-}
+/** Tout est en dollars. */
+export const mainCurrency = (_trades?: unknown): string => 'USD'

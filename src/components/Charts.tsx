@@ -16,13 +16,16 @@ import {
   YAxis,
 } from 'recharts'
 import type { Trade } from '../../shared/types'
-import { equityCurve, groupBy, pnlByPeriod, weekStart, type Granularity, type GroupStat } from '../../shared/stats'
+import { equityCurve, groupBy, pnlByHalfHour, pnlByPeriod, pnlByWeekday, weekStart, type Granularity, type GroupStat, type SplitStat } from '../../shared/stats'
 import { fmtDate, fmtMoney, fmtMonthKey, fmtPct } from '../lib/format'
 
 export const GAIN = '#22c55e'
 export const LOSS = '#ef4444'
 export const NEUTRAL = '#64748b'
 const ACCENT = '#4f8cff'
+// Style « Profits et pertes » : deux barres par catégorie (rouge = profits, bleu = pertes). Échanger ici pour inverser.
+export const SPLIT_PROFIT = '#e8584f'
+export const SPLIT_LOSS = '#4a7bd6'
 
 const tooltipBox = 'rounded-lg border border-line bg-panel-2 px-3 py-2 text-xs shadow-xl'
 
@@ -262,6 +265,54 @@ function GroupTable({ data, currency }: { data: GroupStat[]; currency: string })
       </table>
     </div>
   )
+}
+
+// ---------- F. Profits et pertes par catégorie (jour de la semaine, demi-heure) ----------
+function SplitChart({ title, data, currency, hint }: { title: string; data: SplitStat[]; currency: string; hint?: string }) {
+  const used = data.some((d) => d.trades > 0)
+  return (
+    <ChartCard title={title} empty={!used}>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barGap={1} barCategoryGap="18%">
+            <CartesianGrid vertical={false} />
+            <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} fontSize={11} />
+            <YAxis tickFormatter={compact} tickLine={false} axisLine={false} width={48} />
+            <Tooltip
+              cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null
+                const d = payload[0].payload as SplitStat
+                return (
+                  <div className={tooltipBox}>
+                    <div className="mb-1 font-medium">{d.name}</div>
+                    <div style={{ color: SPLIT_PROFIT }}>Profits : {fmtMoney(d.profit, currency)}</div>
+                    <div style={{ color: SPLIT_LOSS }}>Pertes : {fmtMoney(-d.loss, currency)}</div>
+                    <div className={d.net >= 0 ? 'text-gain' : 'text-loss'}>Net : {fmtMoney(d.net, currency, true)}</div>
+                    <div className="text-muted">{d.trades} trade{d.trades > 1 ? 's' : ''}</div>
+                  </div>
+                )
+              }}
+            />
+            <Legend verticalAlign="top" align="right" iconType="square" formatter={(v) => <span className="text-xs text-ink/80">{v}</span>} />
+            <Bar dataKey="profit" name="Profits" fill={SPLIT_PROFIT} maxBarSize={18} />
+            <Bar dataKey="loss" name="Pertes" fill={SPLIT_LOSS} maxBarSize={18} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      {hint && <p className="mt-2 text-xs text-muted">{hint}</p>}
+    </ChartCard>
+  )
+}
+
+export function WeekdayChart({ trades, currency }: { trades: Trade[]; currency: string }) {
+  const data = useMemo(() => pnlByWeekday(trades), [trades])
+  return <SplitChart title="Profits et pertes par jour de la semaine" data={data} currency={currency} />
+}
+
+export function HalfHourChart({ trades, currency }: { trades: Trade[]; currency: string }) {
+  const data = useMemo(() => pnlByHalfHour(trades), [trades])
+  return <SplitChart title="Profits et pertes par demi-heure" data={data} currency={currency} hint="Selon l’heure d’entrée, de 15:30 à 20:00. « Plus » = après 20:00." />
 }
 
 export { weekStart, ACCENT }

@@ -1,5 +1,5 @@
 // Couche de données : mêmes fonctions qu'avant (list, meta, save, remove), mais tout se passe dans le navigateur.
-import { MARKETS, DIRECTIONS, type Trade, type TradeInput } from '../../shared/types'
+import { MARKETS, DIRECTIONS, CURRENCY, type Trade, type TradeInput } from '../../shared/types'
 import { computeTrade } from '../../shared/calc'
 import { tradeDb } from './db'
 
@@ -52,8 +52,9 @@ function check(input: TradeInput) {
   if (!input.asset?.trim()) fields.asset = "L'actif est obligatoire"
   if (!MARKETS.includes(input.market)) fields.market = 'Marché invalide'
   if (!DIRECTIONS.includes(input.direction)) fields.direction = 'Sens invalide'
-  const hasAuto = nullable(input.entryPrice) !== null && nullable(input.exitPrice) !== null && nullable(input.quantity) !== null
-  if (nullable(input.grossResult) === null && !hasAuto) fields.grossResult = 'Renseignez prix d’entrée, prix de sortie et quantité, ou saisissez directement le résultat brut'
+  if (nullable(input.entryPrice) === null) fields.entryPrice = 'Prix d’entrée obligatoire'
+  if (nullable(input.exitPrice) === null) fields.exitPrice = 'Prix de sortie obligatoire'
+  if (nullable(input.quantity) === null) fields.quantity = 'Quantité obligatoire'
   if (Object.keys(fields).length) throw new ApiError('Validation échouée', fields)
 }
 
@@ -63,12 +64,6 @@ function sortTrades(list: Trade[]): Trade[] {
 
 export const api = {
   list: async () => sortTrades(await tradeDb.all()),
-
-  meta: async () => {
-    const trades = await tradeDb.all()
-    const uniq = (pick: (t: Trade) => string | null) => [...new Set(trades.map(pick).filter((v): v is string => !!v))].sort()
-    return { assets: uniq((t) => t.asset), strategies: uniq((t) => t.strategy), setups: uniq((t) => t.setup) }
-  },
 
   save: async (input: TradeInput & { removeScreenshot?: boolean }, file: File | null, id?: number): Promise<Trade> => {
     check(input)
@@ -80,10 +75,8 @@ export const api = {
       entryPrice: nullable(input.entryPrice),
       exitPrice: nullable(input.exitPrice),
       quantity: nullable(input.quantity),
-      stopLoss: nullable(input.stopLoss),
-      plannedRisk: nullable(input.plannedRisk),
-      fees: nullable(input.fees),
-      grossResult: nullable(input.grossResult),
+      touched: input.touched ?? null,
+      rr: nullable(input.rr),
     })
 
     let screenshot = existing?.screenshot ?? null
@@ -102,20 +95,17 @@ export const api = {
       exitPrice: nullable(input.exitPrice),
       positionSize: nullable(input.positionSize),
       quantity: nullable(input.quantity),
-      stopLoss: nullable(input.stopLoss),
-      takeProfit: nullable(input.takeProfit),
-      // Si le risque n'est pas saisi mais déductible du stop-loss, on le mémorise
-      plannedRisk: nullable(input.plannedRisk) ?? c.riskUsed,
-      fees: nullable(input.fees) ?? 0,
-      currency: input.currency || 'EUR',
+      touched: input.touched ?? null,
+      rr: nullable(input.rr),
+      plannedRisk: c.riskUsed, // risque calculé automatiquement
+      fees: c.fees, // commission calculée automatiquement
+      currency: CURRENCY,
       grossResult: c.grossResult,
       netResult: c.netResult,
       resultPct: c.resultPct,
       rrRealized: c.rrRealized,
       strategy: text(input.strategy),
-      setup: text(input.setup),
       followedPlan: input.followedPlan ?? null,
-      emotion: text(input.emotion),
       screenshot,
       comment: text(input.comment),
       mistakes: text(input.mistakes),

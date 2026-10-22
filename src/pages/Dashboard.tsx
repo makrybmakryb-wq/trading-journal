@@ -100,7 +100,7 @@ export function Dashboard() {
                   <span className="font-medium">{t.asset}</span>
                   <span className={`text-xs ${t.direction === 'long' ? 'text-gain' : 'text-loss'}`}>{t.direction === 'long' ? '▲ Long' : '▼ Short'}</span>
                   <span className="hidden truncate text-muted sm:block">{t.strategy}</span>
-                  <span className={`ml-auto tabular-nums ${pnlColor(t.netResult)}`}>{fmtMoney(t.netResult, t.currency, true)}</span>
+                  <span className={`ml-auto tabular-nums ${pnlColor(t.netResult)}`}>{fmtMoney(t.netResult, 'USD', true)}</span>
                 </button>
               </li>
             ))}

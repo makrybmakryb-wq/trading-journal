@@ -6,7 +6,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 
 export function SettingsPage() {
   const { startingCapital, setStartingCapital, trades, reload } = useStore()
-  const [value, setValue] = useState(startingCapital ? String(startingCapital) : '')
+  const [value, setValue] = useState(String(startingCapital))
   const [saved, setSaved] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [pending, setPending] = useState<File | null>(null)
@@ -19,18 +19,18 @@ export function SettingsPage() {
 
       <section className="card space-y-3 p-5">
         <h2 className="text-sm font-semibold">Capital de départ</h2>
-        <p className="text-sm text-muted">Sert de point de départ à la courbe d’évolution du capital. Laissez vide (ou 0) pour afficher uniquement les résultats cumulés.</p>
+        <p className="text-sm text-muted">Capital en $ (100 000 par défaut). Il sert de point de départ à la courbe du capital et au calcul automatique de la quantité (90 % du capital, recalculé quand la position tombe à 80 %).</p>
         <form
           className="flex gap-2"
           onSubmit={(e) => {
             e.preventDefault()
             const n = Number(value.replace(',', '.'))
-            setStartingCapital(Number.isFinite(n) && n >= 0 ? n : 0)
+            setStartingCapital(Number.isFinite(n) && n > 0 ? n : 100000)
             setSaved(true)
             setTimeout(() => setSaved(false), 1800)
           }}
         >
-          <input className="field max-w-48" inputMode="decimal" placeholder="Ex. 10000" value={value} onChange={(e) => setValue(e.target.value)} />
+          <input className="field max-w-48" inputMode="decimal" placeholder="100000" value={value} onChange={(e) => setValue(e.target.value)} />
           <button className="btn btn-primary" type="submit">
             {saved ? 'Enregistré ✓' : 'Enregistrer'}
           </button>

@@ -6,21 +6,26 @@ export type Market = (typeof MARKETS)[number]
 export const DIRECTIONS = ['long', 'short'] as const
 export type Direction = (typeof DIRECTIONS)[number]
 
-export const EMOTIONS = [
-  'Calme',
-  'Confiant',
-  'Concentré',
-  'Neutre',
-  'Hésitant',
-  'Anxieux',
-  'Impatient',
-  'FOMO',
-  'Euphorique',
-  'Frustré',
-  'Vengeur (revenge)',
-] as const
+/** Actifs proposés dans le menu déroulant (BTC en premier). « Autre » permet de saisir un nom libre. */
+export const ASSETS = ['BTC', 'ETH', 'EUR/USD', 'GOLD', 'NASD', 'Autre'] as const
 
-export const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'JPY', 'USDT', 'BTC'] as const
+/** Marché suggéré automatiquement selon l'actif choisi (modifiable dans le formulaire). */
+export const ASSET_MARKET: Record<string, Market> = {
+  BTC: 'Crypto',
+  ETH: 'Crypto',
+  'EUR/USD': 'Forex',
+  GOLD: 'Matières premières',
+  NASD: 'Indices',
+}
+
+export const STRATEGIES = ['OPR', 'SMC', 'ITC', 'RESISTANCE', 'Indicateur', 'Autre'] as const
+
+/** Niveau touché en fin de trade : Take-profit ou Stop-loss. */
+export const TOUCHES = ['TP', 'SL'] as const
+export type Touch = (typeof TOUCHES)[number]
+
+/** Toutes les valeurs sont en dollars. */
+export const CURRENCY = 'USD'
 
 /** Un trade tel qu'il est stocké et renvoyé par l'API. */
 export interface Trade {
@@ -35,19 +40,17 @@ export interface Trade {
   exitPrice: number | null
   positionSize: number | null // taille de la position (valeur ou lots)
   quantity: number | null
-  stopLoss: number | null
-  takeProfit: number | null
-  plannedRisk: number | null // risque prévu en devise
+  touched: Touch | null // niveau touché : TP ou SL
+  rr: number | null // ratio risque/rendement visé (RR)
+  plannedRisk: number | null // risque calculé automatiquement, en $
   fees: number
-  currency: string
+  currency: string // toujours 'USD'
   grossResult: number // résultat brut (avant frais)
   netResult: number // résultat net (après frais)
   resultPct: number | null // gain/perte en % du capital engagé
   rrRealized: number | null // résultat net / risque prévu (en R)
   strategy: string | null
-  setup: string | null
   followedPlan: boolean | null
-  emotion: string | null
   screenshot: string | null // nom du fichier dans /uploads
   comment: string | null
   mistakes: string | null
@@ -68,17 +71,10 @@ export interface TradeInput {
   exitPrice?: number | null
   positionSize?: number | null
   quantity?: number | null
-  stopLoss?: number | null
-  takeProfit?: number | null
-  plannedRisk?: number | null
-  fees?: number | null
-  currency?: string
-  /** Résultat brut saisi à la main (prioritaire sur le calcul automatique). */
-  grossResult?: number | null
+  touched?: Touch | null
+  rr?: number | null
   strategy?: string | null
-  setup?: string | null
   followedPlan?: boolean | null
-  emotion?: string | null
   comment?: string | null
   mistakes?: string | null
   lessons?: string | null

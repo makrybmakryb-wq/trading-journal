@@ -31,6 +31,7 @@ export const useStore = () => {
 }
 
 const CAPITAL_KEY = 'tj.startingCapital'
+export const DEFAULT_CAPITAL = 100000
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [trades, setTrades] = useState<Trade[]>([])
@@ -41,9 +42,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [toDelete, setToDelete] = useState<Trade | null>(null)
   const [startingCapital, setCapital] = useState<number>(() => {
     try {
-      return Number(localStorage.getItem(CAPITAL_KEY)) || 0
+      return Number(localStorage.getItem(CAPITAL_KEY)) || DEFAULT_CAPITAL
     } catch {
-      return 0
+      return DEFAULT_CAPITAL
     }
   })
 
