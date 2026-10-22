@@ -6,17 +6,19 @@ import { computeStats, equityCurve, pnlByPeriod, weekStart, periodRange, pnlByHa
 import type { Trade } from './types'
 
 // --- calc ---
-// Long 10 @100 → 110 : brut 100 ; frais 0,0005 × 10 × 210 = 1,05 ; net 98,95
-const long = computeTrade({ direction: 'long', entryPrice: 100, exitPrice: 110, quantity: 10, touched: 'TP', rr: 2 })
+// Long 1 000 $ @100 → 110 : brut 100 ; frais 0,0005 % × 1 000 = 0,005 ; net 99,995 ; R réalisé = RR saisi
+const long = computeTrade({ direction: 'long', entryPrice: 100, exitPrice: 110, amount: 1000, touched: 'TP', rr: 2 })
 assert.equal(long.grossResult, 100)
-assert.equal(long.fees, 1.05)
-assert.equal(long.netResult, 98.95)
-assert.equal(long.riskUsed, 50) // TP touché : gain brut 100 ÷ RR 2
-assert.equal(long.rrRealized, 1.979)
+assert.equal(long.fees, 0.005)
+assert.equal(long.netResult, 99.995)
+assert.equal(long.rrRealized, 2)
+assert.equal(long.quantity, 10)
+// 1 000 000 $ → 5 $ de frais
+assert.equal(computeTrade({ direction: 'long', entryPrice: 100, exitPrice: 100, amount: 1_000_000 }).fees, 5)
 
-const short = computeTrade({ direction: 'short', entryPrice: 100, exitPrice: 105, quantity: 2, touched: 'SL' })
+const short = computeTrade({ direction: 'short', entryPrice: 100, exitPrice: 105, amount: 200, touched: 'SL' })
 assert.equal(short.grossResult, -10)
-assert.equal(short.riskUsed, 10) // SL touché : perte brute
+assert.equal(short.rrRealized, -1)
 assert.equal(computeTrade({ direction: 'long' }).autoGross, null)
 
 // --- taille de position ---

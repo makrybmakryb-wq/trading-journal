@@ -38,8 +38,9 @@ export interface Trade {
   direction: Direction
   entryPrice: number | null
   exitPrice: number | null
-  positionSize: number | null // taille de la position (valeur ou lots)
-  quantity: number | null
+  positionSize: number | null // taille de position en % du capital actuel au moment de l'entrée
+  amount: number | null // montant engagé, en $
+  quantity: number | null // unités déduites (montant ÷ prix d'entrée), conservé pour compatibilité
   touched: Touch | null // niveau touché : TP ou SL
   rr: number | null // ratio risque/rendement visé (RR)
   plannedRisk: number | null // risque calculé automatiquement, en $
@@ -70,6 +71,7 @@ export interface TradeInput {
   entryPrice?: number | null
   exitPrice?: number | null
   positionSize?: number | null
+  amount?: number | null
   quantity?: number | null
   touched?: Touch | null
   rr?: number | null

@@ -19,18 +19,18 @@ export function SettingsPage() {
 
       <section className="card space-y-3 p-5">
         <h2 className="text-sm font-semibold">Capital de départ</h2>
-        <p className="text-sm text-muted">Capital en $ (100 000 par défaut). Il sert de point de départ à la courbe du capital et au calcul automatique de la quantité (90 % du capital, recalculé quand la position tombe à 80 %).</p>
+        <p className="text-sm text-muted">Capital de départ en $ (100 par défaut). Il sert de point de départ à la courbe du capital, au calcul de la taille de position (en % du capital actuel) et au montant proposé automatiquement (90 % du capital, recalculé quand la position tombe à 80 %).</p>
         <form
           className="flex gap-2"
           onSubmit={(e) => {
             e.preventDefault()
             const n = Number(value.replace(',', '.'))
-            setStartingCapital(Number.isFinite(n) && n > 0 ? n : 100000)
+            setStartingCapital(Number.isFinite(n) && n > 0 ? n : 100)
             setSaved(true)
             setTimeout(() => setSaved(false), 1800)
           }}
         >
-          <input className="field max-w-48" inputMode="decimal" placeholder="100000" value={value} onChange={(e) => setValue(e.target.value)} />
+          <input className="field max-w-48" inputMode="decimal" placeholder="100" value={value} onChange={(e) => setValue(e.target.value)} />
           <button className="btn btn-primary" type="submit">
             {saved ? 'Enregistré ✓' : 'Enregistrer'}
           </button>

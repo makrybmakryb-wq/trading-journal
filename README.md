@@ -47,7 +47,7 @@ Les pages utilisent des adresses de type `…/trading-journal/#/trades` (routage
 
 ## Formules
 
-**Par trade** — Brut = (sortie − entrée) × quantité (long) ou (entrée − sortie) × quantité (short), ou saisi à la main (Forex/CFD). Net = brut − frais. Gain/perte % = net ÷ (entrée × quantité) × 100. Risque = risque prévu, sinon |entrée − stop| × quantité. Ratio R = net ÷ risque.
+**Par trade** — Montant engagé en $. Brut = montant × (sortie − entrée) ÷ entrée (long) ou montant × (entrée − sortie) ÷ entrée (short). Frais = 0,0005 % × montant, **à l'entrée uniquement** (1 000 000 $ → 5 $). Net = brut − frais. Gain/perte % = net ÷ montant × 100. Taille de position = montant ÷ capital actuel × 100. Ratio R réalisé = RR saisi (TP touché) ou −1 R (SL touché).
 
 **Tableau de bord** — Taux de réussite = gagnants ÷ (gagnants + perdants) (équilibre exclu). Profit brut / perte brute = somme des nets positifs / négatifs. Gain / perte moyens = ÷ nombre de gagnants / perdants. Profit factor = profit brut ÷ |perte brute|. Drawdown maximal = plus grande baisse du capital cumulé depuis un plus-haut. Risque/rendement moyen = moyenne des R. Espérance = P&L net ÷ nombre de trades.
 

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ImagePlus, Trash2 } from 'lucide-react'
 import { ASSETS, ASSET_MARKET, MARKETS, STRATEGIES, TOUCHES, type Direction, type Market, type Touch, type Trade, type TradeInput } from '../../shared/types'
-import { computeTrade, FEE_RATE } from '../../shared/calc'
-import { suggestQuantity, tradesBefore, TARGET_PCT, THRESHOLD_PCT } from '../../shared/sizing'
+import { computeTrade } from '../../shared/calc'
+import { suggestQuantity, tradesBefore } from '../../shared/sizing'
 import { useStore } from '../lib/store'
 import { toISO } from '../../shared/stats'
 import { api, ApiError } from '../lib/api'
@@ -19,8 +19,7 @@ type FormState = {
   direction: Direction
   entryPrice: string
   exitPrice: string
-  quantity: string
-  positionSize: string
+  amount: string // montant engagé en $
   touched: '' | Touch
   rr: string
   followedPlan: '' | 'yes' | 'no'
@@ -44,8 +43,7 @@ function initial(t: Trade | null, defaultDate?: string): FormState {
     direction: t?.direction ?? 'long',
     entryPrice: s(t?.entryPrice),
     exitPrice: s(t?.exitPrice),
-    quantity: s(t?.quantity),
-    positionSize: s(t?.positionSize),
+    amount: s(t?.amount ?? (t?.quantity != null && t?.entryPrice != null ? Math.round(t.quantity * t.entryPrice * 100) / 100 : null)),
     touched: t?.touched ?? '',
     rr: s(t?.rr),
     followedPlan: t?.followedPlan == null ? '' : t.followedPlan ? 'yes' : 'no',
@@ -75,9 +73,8 @@ export function TradeFormModal({
 }) {
   const { trades, startingCapital } = useStore()
   const [f, setF] = useState<FormState>(() => initial(trade, defaultDate))
-  // Quantité et taille de position sont automatiques ; en modification on garde les valeurs enregistrées.
-  const [qtyManual, setQtyManual] = useState<boolean>(!!trade)
-  const [sizeManual, setSizeManual] = useState<boolean>(!!trade)
+  // Le montant en $ est proposé automatiquement ; en modification on garde la valeur enregistrée.
+  const [amountManual, setAmountManual] = useState<boolean>(!!trade)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(trade?.screenshot ?? null)
   const [removeShot, setRemoveShot] = useState(false)
@@ -102,17 +99,19 @@ export function TradeFormModal({
     [trades, trade, startingCapital, f.entryPrice],
   )
 
+  // Montant suggéré = quantité fixe (90 % du capital, recalculée sous 80 %) × prix d'entrée.
   useEffect(() => {
-    if (!qtyManual) setF((p) => ({ ...p, quantity: sizing.quantity === null ? '' : String(sizing.quantity) }))
-  }, [qtyManual, sizing.quantity])
-
-  // Taille de position = valeur de la position (quantité × prix d'entrée), sauf modification manuelle.
-  useEffect(() => {
-    if (sizeManual) return
-    const q = num(f.quantity)
+    if (amountManual) return
     const e = num(f.entryPrice)
-    setF((p) => ({ ...p, positionSize: q && e ? String(Math.round(q * e * 100) / 100) : '' }))
-  }, [sizeManual, f.quantity, f.entryPrice])
+    const amt = sizing.quantity && e ? Math.round(sizing.quantity * e * 100) / 100 : null
+    setF((p) => ({ ...p, amount: amt === null ? '' : String(amt) }))
+  }, [amountManual, sizing.quantity, f.entryPrice])
+
+  // Taille de position = montant ÷ capital actuel (en %)
+  const positionPct = useMemo(() => {
+    const a = num(f.amount)
+    return a && sizing.capital > 0 ? Math.round((a / sizing.capital) * 10000) / 100 : null
+  }, [f.amount, sizing.capital])
 
   // Aperçu en direct des calculs (mêmes formules qu'à l'enregistrement)
   const calc = useMemo(
@@ -121,7 +120,7 @@ export function TradeFormModal({
         direction: f.direction,
         entryPrice: num(f.entryPrice),
         exitPrice: num(f.exitPrice),
-        quantity: num(f.quantity),
+        amount: num(f.amount),
         touched: f.touched || null,
         rr: num(f.rr),
       }),
@@ -154,14 +153,14 @@ export function TradeFormModal({
     const e: Record<string, string> = {}
     if (!f.date) e.date = 'Date obligatoire'
     if (f.asset === 'Autre' && !f.customAsset.trim()) e.customAsset = 'Nom de l’actif obligatoire'
-    for (const k of ['entryPrice', 'exitPrice', 'positionSize', 'quantity', 'rr'] as const) {
+    for (const k of ['entryPrice', 'exitPrice', 'amount', 'rr'] as const) {
       if (Number.isNaN(num(f[k]))) e[k] = 'Nombre invalide'
     }
     if (num(f.entryPrice) === null) e.entryPrice = 'Obligatoire'
     if (num(f.exitPrice) === null) e.exitPrice = 'Obligatoire'
-    const q = num(f.quantity)
-    if (q === null) e.quantity = 'Obligatoire'
-    else if (q <= 0) e.quantity = 'Doit être positive'
+    const q = num(f.amount)
+    if (q === null) e.amount = 'Obligatoire'
+    else if (q <= 0) e.amount = 'Doit être positif'
     const rr = num(f.rr)
     if (rr !== null && rr <= 0) e.rr = 'Doit être positif'
     return e
@@ -186,8 +185,8 @@ export function TradeFormModal({
       direction: f.direction,
       entryPrice: num(f.entryPrice),
       exitPrice: num(f.exitPrice),
-      positionSize: num(f.positionSize),
-      quantity: num(f.quantity),
+      positionSize: positionPct,
+      amount: num(f.amount),
       touched: f.touched || null,
       rr: num(f.rr),
       strategy: f.strategy || null,
@@ -262,43 +261,27 @@ export function TradeFormModal({
           <Field label="Prix de sortie *" error={errors.exitPrice}>
             <input inputMode="decimal" className="field" value={f.exitPrice} onChange={(e) => set('exitPrice', e.target.value)} {...err('exitPrice')} />
           </Field>
-          <Field label="Quantité" hint={qtyManual ? 'Modifiée à la main' : sizing.recalculated ? `Recalculée (${TARGET_PCT * 100} %)` : 'Fixe (inchangée)'} error={errors.quantity}>
+          <Field label="Montant ($) *" hint={amountManual ? 'Modifié à la main' : sizing.recalculated ? 'Recalculé (90 %)' : 'Fixe (inchangé)'} error={errors.amount}>
             <div className="flex gap-2">
               <input
                 inputMode="decimal"
                 className="field"
-                value={f.quantity}
+                value={f.amount}
                 onChange={(e) => {
-                  setQtyManual(true)
-                  set('quantity', e.target.value)
+                  setAmountManual(true)
+                  set('amount', e.target.value)
                 }}
-                {...err('quantity')}
+                {...err('amount')}
               />
-              {qtyManual && (
-                <button type="button" className="btn btn-ghost shrink-0" title="Revenir au calcul automatique" onClick={() => setQtyManual(false)}>
+              {amountManual && (
+                <button type="button" className="btn btn-ghost shrink-0" title="Revenir au calcul automatique" onClick={() => setAmountManual(false)}>
                   Auto
                 </button>
               )}
             </div>
           </Field>
-          <Field label="Taille de position ($)" hint={sizeManual ? 'Modifiée à la main' : 'Quantité × prix d’entrée'} error={errors.positionSize}>
-            <div className="flex gap-2">
-              <input
-                inputMode="decimal"
-                className="field"
-                value={f.positionSize}
-                onChange={(e) => {
-                  setSizeManual(true)
-                  set('positionSize', e.target.value)
-                }}
-                {...err('positionSize')}
-              />
-              {sizeManual && (
-                <button type="button" className="btn btn-ghost shrink-0" title="Revenir au calcul automatique" onClick={() => setSizeManual(false)}>
-                  Auto
-                </button>
-              )}
-            </div>
+          <Field label="Taille de position (%)" hint="Montant ÷ capital actuel">
+            <input readOnly tabIndex={-1} className="field opacity-80" value={positionPct === null ? '' : String(positionPct)} />
           </Field>
           <Field label="Touché (TP / SL)">
             <select className="field" value={f.touched} onChange={(e) => set('touched', e.target.value as FormState['touched'])}>
@@ -309,17 +292,12 @@ export function TradeFormModal({
           <Field label="RR" hint="Ex. 2 pour 1:2" error={errors.rr}>
             <input inputMode="decimal" className="field" placeholder="2" value={f.rr} onChange={(e) => set('rr', e.target.value)} {...err('rr')} />
           </Field>
-          <p className="sm:col-span-3 text-xs text-muted">
-            Capital actuel : {fmtMoney(sizing.capital, 'USD')} · quantité = {TARGET_PCT * 100} % du capital, conservée tant que sa valeur reste au-dessus de {THRESHOLD_PCT * 100} % du capital.
-          </p>
+          <p className="sm:col-span-3 text-xs text-muted">Capital actuel : {fmtMoney(sizing.capital, 'USD')}</p>
         </Section>
 
         {/* --- Risque et résultat (tout est calculé) --- */}
         <Section title="Risque et résultat (en $)">
-          <Field label="Risque" hint="Calculé automatiquement">
-            <input readOnly tabIndex={-1} className="field opacity-80" value={dash(calc.riskUsed)} placeholder="Touché + RR requis" />
-          </Field>
-          <Field label="Frais et commissions" hint={`${FEE_RATE} × montant, entrée + sortie`}>
+          <Field label="Frais et commissions" hint="0,0005 % du montant, à l’entrée seulement">
             <input readOnly tabIndex={-1} className="field opacity-80" value={calc.autoGross === null ? '' : String(calc.fees)} />
           </Field>
           <Field label="Résultat brut" hint="Calculé automatiquement">
@@ -330,7 +308,7 @@ export function TradeFormModal({
           <div className="sm:col-span-3 grid grid-cols-2 gap-3 rounded-xl border border-line bg-bg/60 p-4 sm:grid-cols-4">
             <Preview label="Résultat net" value={fmtMoney(calc.autoGross === null ? null : calc.netResult, 'USD', true)} color={pnlColor(calc.netResult)} />
             <Preview label="Gain / perte %" value={fmtPct(calc.resultPct, 2, true)} color={pnlColor(calc.resultPct)} />
-            <Preview label="Risque retenu" value={fmtMoney(calc.riskUsed, 'USD')} />
+            <Preview label="Taille de position" value={fmtPct(positionPct, 2)} />
             <Preview label="Ratio R réalisé" value={calc.rrRealized === null ? '—' : `${fmtNum(calc.rrRealized, 2)} R`} color={pnlColor(calc.rrRealized)} />
           </div>
         </Section>

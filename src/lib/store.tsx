@@ -31,7 +31,7 @@ export const useStore = () => {
 }
 
 const CAPITAL_KEY = 'tj.startingCapital'
-export const DEFAULT_CAPITAL = 100000
+export const DEFAULT_CAPITAL = 100
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [trades, setTrades] = useState<Trade[]>([])

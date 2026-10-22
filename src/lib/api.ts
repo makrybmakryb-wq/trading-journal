@@ -54,7 +54,7 @@ function check(input: TradeInput) {
   if (!DIRECTIONS.includes(input.direction)) fields.direction = 'Sens invalide'
   if (nullable(input.entryPrice) === null) fields.entryPrice = 'Prix d’entrée obligatoire'
   if (nullable(input.exitPrice) === null) fields.exitPrice = 'Prix de sortie obligatoire'
-  if (nullable(input.quantity) === null) fields.quantity = 'Quantité obligatoire'
+  if (nullable(input.amount) === null) fields.amount = 'Montant obligatoire'
   if (Object.keys(fields).length) throw new ApiError('Validation échouée', fields)
 }
 
@@ -74,7 +74,7 @@ export const api = {
       direction: input.direction,
       entryPrice: nullable(input.entryPrice),
       exitPrice: nullable(input.exitPrice),
-      quantity: nullable(input.quantity),
+      amount: nullable(input.amount),
       touched: input.touched ?? null,
       rr: nullable(input.rr),
     })
@@ -94,10 +94,11 @@ export const api = {
       entryPrice: nullable(input.entryPrice),
       exitPrice: nullable(input.exitPrice),
       positionSize: nullable(input.positionSize),
-      quantity: nullable(input.quantity),
+      amount: nullable(input.amount),
+      quantity: c.quantity,
       touched: input.touched ?? null,
       rr: nullable(input.rr),
-      plannedRisk: c.riskUsed, // risque calculé automatiquement
+      plannedRisk: null, // champ « Risque » supprimé
       fees: c.fees, // commission calculée automatiquement
       currency: CURRENCY,
       grossResult: c.grossResult,

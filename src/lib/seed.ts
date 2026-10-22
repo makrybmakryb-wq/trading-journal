@@ -41,16 +41,17 @@ export async function seedDemo(): Promise<number> {
       const exit = r(entry + sign * (win ? dist * rr : -dist))
       const qty = suggestQuantity(trades, start, entry).quantity ?? 0
       const touched = win ? 'TP' : 'SL'
-      const c = computeTrade({ direction, entryPrice: entry, exitPrice: exit, quantity: qty, touched, rr })
+      const c = computeTrade({ direction, entryPrice: entry, exitPrice: exit, amount: r(qty * entry, 2), touched, rr })
       const followed = rnd() < 0.78
       const h = 15 + Math.floor(rnd() * 6)
       const m = rnd() < 0.5 ? 0 : 30
       const now = new Date().toISOString()
+      const capitalBefore = capital
       capital += c.netResult
       trades.push({
         id: ++id, date: toISO(day), entryTime: hm(h, m), exitTime: hm(h, Math.min(m + 20, 59)), asset: ins.asset, market: ASSET_MARKET[ins.asset], direction,
-        entryPrice: entry, exitPrice: exit, positionSize: r(qty * entry, 2), quantity: qty, touched, rr,
-        plannedRisk: c.riskUsed, fees: c.fees, currency: CURRENCY, grossResult: c.grossResult, netResult: c.netResult, resultPct: c.resultPct, rrRealized: c.rrRealized,
+        entryPrice: entry, exitPrice: exit, positionSize: r(((qty * entry) / capitalBefore) * 100, 2), amount: r(qty * entry, 2), quantity: qty, touched, rr,
+        plannedRisk: null, fees: c.fees, currency: CURRENCY, grossResult: c.grossResult, netResult: c.netResult, resultPct: c.resultPct, rrRealized: c.rrRealized,
         strategy: pick(STRATEGIES), followedPlan: followed, screenshot: null,
         comment: win ? 'Entrée propre, exécution conforme au plan.' : 'Le marché a invalidé le scénario.',
         mistakes: followed ? null : 'Entrée trop tôt, hors plan.',

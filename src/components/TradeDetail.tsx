@@ -34,11 +34,10 @@ export function TradeDetailModal({
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Item label="Prix d’entrée" value={fmtNum(t.entryPrice, 6)} />
           <Item label="Prix de sortie" value={fmtNum(t.exitPrice, 6)} />
-          <Item label="Quantité" value={fmtNum(t.quantity, 6)} />
-          <Item label="Taille de position" value={fmtNum(t.positionSize, 6)} />
+          <Item label="Montant" value={t.amount != null ? fmtMoney(t.amount, cur) : t.quantity != null && t.entryPrice != null ? fmtMoney(t.quantity * t.entryPrice, cur) : '—'} />
+          <Item label="Taille de position" value={fmtPct(t.positionSize, 2)} />
           <Item label="Touché" value={t.touched ?? '—'} color={t.touched === 'TP' ? 'text-gain' : t.touched === 'SL' ? 'text-loss' : ''} />
           <Item label="RR" value={t.rr === null || t.rr === undefined ? '—' : fmtNum(t.rr, 2)} />
-          <Item label="Risque" value={fmtMoney(t.plannedRisk, cur)} />
           <Item label="Frais" value={fmtMoney(t.fees, cur)} />
           <Item label="Résultat brut" value={fmtMoney(t.grossResult, cur, true)} color={pnlColor(t.grossResult)} />
           <Item label="Résultat net" value={fmtMoney(t.netResult, cur, true)} color={pnlColor(t.netResult)} />
