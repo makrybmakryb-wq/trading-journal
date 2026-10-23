@@ -1,0 +1,173 @@
+diff --git a/shared/stats.test.ts b/shared/stats.test.ts
+index a888a0b..0e275c7 100644
+--- a/shared/stats.test.ts
++++ b/shared/stats.test.ts
+@@ -2,7 +2,7 @@
+ import assert from 'node:assert/strict'
+ import { computeTrade } from './calc'
+ import { suggestQuantity } from './sizing'
+-import { computeStats, equityCurve, pnlByPeriod, weekStart, periodRange, pnlByHalfHour, halfHourSlot, pnlByWeekday } from './stats'
++import { computeStats, equityCurve, pnlByPeriod, weekStart, periodRange, pnlByEntrySlot, pnlByExitSlot, timeSlot, pnlByWeekday } from './stats'
+ import type { Trade } from './types'
+ 
+ // --- calc ---
+@@ -67,11 +67,14 @@ assert.equal(weekStart('2026-10-21'), '2026-10-19') // mercredi → lundi
+ assert.deepEqual(periodRange('month', new Date(2026, 1, 10)), { from: '2026-02-01', to: '2026-02-28' })
+ 
+ // --- tranches horaires ---
+-assert.equal(halfHourSlot('15:29'), 'Avant')
+-assert.equal(halfHourSlot('15:30'), '15:30')
+-assert.equal(halfHourSlot('19:59'), '19:30')
+-assert.equal(halfHourSlot('20:00'), 'Plus')
+-assert.equal(pnlByHalfHour([]).length, 10) // 15:30 … 19:30 (9 tranches) + « Plus »
++assert.equal(timeSlot('15:29'), 'Avant')
++assert.equal(timeSlot('15:30'), '15:30')
++assert.equal(timeSlot('15:34'), '15:30')
++assert.equal(timeSlot('15:35'), '15:35')
++assert.equal(timeSlot('19:59'), '19:55')
++assert.equal(timeSlot('20:00'), 'Plus')
++assert.equal(pnlByEntrySlot([]).length, 55) // 15:30 … 19:55 (54 tranches) + « Plus »
++assert.equal(pnlByExitSlot([{ ...mk(1, '2026-01-05', 50), exitTime: '16:07' }]).find((x) => x.name === '16:05')?.net, 50)
+ const wd = pnlByWeekday([{ ...mk(1, '2026-01-05', 100) }, { ...mk(2, '2026-01-05', -40) }])
+ assert.deepEqual(wd[0], { name: 'Lun', profit: 100, loss: 40, net: 60, trades: 2 })
+ 
+diff --git a/shared/stats.ts b/shared/stats.ts
+index 3b39c1d..11cda91 100644
+--- a/shared/stats.ts
++++ b/shared/stats.ts
+@@ -281,27 +281,33 @@ export const weekdayOf = (date: string) => WEEKDAY_LABELS[(new Date(date + 'T12:
+ 
+ export const pnlByWeekday = (trades: Trade[]) => splitBy(trades, WEEKDAY_LABELS, (t) => weekdayOf(t.date))
+ 
+-/** Tranches de 30 min de 15:30 à 20:00 ; tout ce qui est après 20:00 va dans « Plus ». */
++/** Tranches de 5 min de 15:30 à 20:00 ; tout ce qui est après 20:00 va dans « Plus ». */
+ const SLOT_START = 15 * 60 + 30
+ const SLOT_END = 20 * 60
+-export const HALF_HOUR_LABELS = (() => {
++export const SLOT_STEP = 5
++export const SLOT_LABELS = (() => {
+   const l: string[] = []
+-  for (let m = SLOT_START; m < SLOT_END; m += 30) l.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`)
++  for (let m = SLOT_START; m < SLOT_END; m += SLOT_STEP) l.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`)
+   return [...l, 'Plus']
+ })()
+ export const BEFORE_LABEL = 'Avant'
+ 
+-/** Tranche d'une heure d'entrée « HH:MM ». Avant 15:30 → « Avant » (affichée seulement si utilisée). */
+-export function halfHourSlot(time: string | null): string | null {
++/** Tranche de 5 min d'une heure « HH:MM ». Avant 15:30 → « Avant » (affichée seulement si utilisée). */
++export function timeSlot(time: string | null): string | null {
+   const m = /^(\d{1,2}):(\d{2})$/.exec(time ?? '')
+   if (!m) return null
+   const mins = Number(m[1]) * 60 + Number(m[2])
+   if (mins < SLOT_START) return BEFORE_LABEL
+   if (mins >= SLOT_END) return 'Plus'
+-  return HALF_HOUR_LABELS[Math.floor((mins - SLOT_START) / 30)]
++  return SLOT_LABELS[Math.floor((mins - SLOT_START) / SLOT_STEP)]
+ }
+ 
+-export function pnlByHalfHour(trades: Trade[]): SplitStat[] {
+-  const all = splitBy(trades, [BEFORE_LABEL, ...HALF_HOUR_LABELS], (t) => halfHourSlot(t.entryTime))
++function pnlBySlot(trades: Trade[], timeOf: (t: Trade) => string | null): SplitStat[] {
++  const all = splitBy(trades, [BEFORE_LABEL, ...SLOT_LABELS], (t) => timeSlot(timeOf(t)))
+   return all.filter((s) => s.name !== BEFORE_LABEL || s.trades > 0)
+ }
++
++/** P&L par tranche de 5 min selon l'heure d'entrée. */
++export const pnlByEntrySlot = (trades: Trade[]) => pnlBySlot(trades, (t) => t.entryTime)
++/** P&L par tranche de 5 min selon l'heure de sortie. */
++export const pnlByExitSlot = (trades: Trade[]) => pnlBySlot(trades, (t) => t.exitTime)
+diff --git a/src/components/Charts.tsx b/src/components/Charts.tsx
+index 42936cc..6717ff6 100644
+--- a/src/components/Charts.tsx
++++ b/src/components/Charts.tsx
+@@ -16,7 +16,7 @@ import {
+   YAxis,
+ } from 'recharts'
+ import type { Trade } from '../../shared/types'
+-import { equityCurve, groupBy, pnlByHalfHour, pnlByPeriod, pnlByWeekday, weekStart, type Granularity, type GroupStat, type SplitStat } from '../../shared/stats'
++import { equityCurve, groupBy, pnlByEntrySlot, pnlByExitSlot, pnlByPeriod, pnlByWeekday, weekStart, type Granularity, type GroupStat, type SplitStat } from '../../shared/stats'
+ import { fmtDate, fmtMoney, fmtMonthKey, fmtPct } from '../lib/format'
+ 
+ export const GAIN = '#22c55e'
+@@ -268,15 +268,18 @@ function GroupTable({ data, currency }: { data: GroupStat[]; currency: string })
+ }
+ 
+ // ---------- F. Profits et pertes par catégorie (jour de la semaine, demi-heure) ----------
+-function SplitChart({ title, data, currency, hint }: { title: string; data: SplitStat[]; currency: string; hint?: string }) {
++function SplitChart({ title, data, currency, hint, dense }: { title: string; data: SplitStat[]; currency: string; hint?: string; dense?: boolean }) {
+   const used = data.some((d) => d.trades > 0)
++  // Mode dense (tranches de 5 min) : on n'affiche qu'une étiquette sur 6 (toutes les 30 min) + « Plus » / « Avant ».
++  const tick = (v: string) => (!dense || v.endsWith(':00') || v.endsWith(':30') || !/^\d/.test(v) ? v : '')
+   return (
+     <ChartCard title={title} empty={!used}>
+-      <div className="h-64">
++      <div className={dense ? 'overflow-x-auto' : undefined}>
++      <div className="h-64" style={dense ? { minWidth: 900 } : undefined}>
+         <ResponsiveContainer width="100%" height="100%">
+-          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barGap={1} barCategoryGap="18%">
++          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barGap={dense ? 0 : 1} barCategoryGap={dense ? '8%' : '18%'}>
+             <CartesianGrid vertical={false} />
+-            <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} fontSize={11} />
++            <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} fontSize={dense ? 10 : 11} tickFormatter={tick} />
+             <YAxis tickFormatter={compact} tickLine={false} axisLine={false} width={48} />
+             <Tooltip
+               cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+@@ -295,11 +298,12 @@ function SplitChart({ title, data, currency, hint }: { title: string; data: Spli
+               }}
+             />
+             <Legend verticalAlign="top" align="right" iconType="square" formatter={(v) => <span className="text-xs text-ink/80">{v}</span>} />
+-            <Bar dataKey="profit" name="Profits" fill={SPLIT_PROFIT} maxBarSize={18} />
+-            <Bar dataKey="loss" name="Pertes" fill={SPLIT_LOSS} maxBarSize={18} />
++            <Bar dataKey="profit" name="Profits" fill={SPLIT_PROFIT} maxBarSize={dense ? 8 : 18} />
++            <Bar dataKey="loss" name="Pertes" fill={SPLIT_LOSS} maxBarSize={dense ? 8 : 18} />
+           </BarChart>
+         </ResponsiveContainer>
+       </div>
++      </div>
+       {hint && <p className="mt-2 text-xs text-muted">{hint}</p>}
+     </ChartCard>
+   )
+@@ -310,9 +314,14 @@ export function WeekdayChart({ trades, currency }: { trades: Trade[]; currency:
+   return <SplitChart title="Profits et pertes par jour de la semaine" data={data} currency={currency} />
+ }
+ 
+-export function HalfHourChart({ trades, currency }: { trades: Trade[]; currency: string }) {
+-  const data = useMemo(() => pnlByHalfHour(trades), [trades])
+-  return <SplitChart title="Profits et pertes par demi-heure" data={data} currency={currency} hint="Selon l’heure d’entrée, de 15:30 à 20:00. « Plus » = après 20:00." />
++export function EntrySlotChart({ trades, currency }: { trades: Trade[]; currency: string }) {
++  const data = useMemo(() => pnlByEntrySlot(trades), [trades])
++  return <SplitChart dense title="Profits et pertes par tranche de 5 min — entrées" data={data} currency={currency} hint="Selon l’heure d’entrée, de 15:30 à 20:00. « Plus » = après 20:00." />
++}
++
++export function ExitSlotChart({ trades, currency }: { trades: Trade[]; currency: string }) {
++  const data = useMemo(() => pnlByExitSlot(trades), [trades])
++  return <SplitChart dense title="Profits et pertes par tranche de 5 min — sorties" data={data} currency={currency} hint="Selon l’heure de sortie, de 15:30 à 20:00. « Plus » = après 20:00." />
+ }
+ 
+ export { weekStart, ACCENT }
+diff --git a/src/pages/Analytics.tsx b/src/pages/Analytics.tsx
+index aaa4595..eafc07d 100644
+--- a/src/pages/Analytics.tsx
++++ b/src/pages/Analytics.tsx
+@@ -3,7 +3,7 @@ import { computeStats } from '../../shared/stats'
+ import { useStore } from '../lib/store'
+ import { fmtMoney, fmtPct, mainCurrency, pnlColor } from '../lib/format'
+ import { PeriodFilter, usePeriod } from '../components/PeriodFilter'
+-import { GroupChart, HalfHourChart, WeekdayChart } from '../components/Charts'
++import { EntrySlotChart, ExitSlotChart, GroupChart, WeekdayChart } from '../components/Charts'
+ import { StatCard } from '../components/StatCard'
+ 
+ export function AnalyticsPage() {
+@@ -42,7 +42,10 @@ export function AnalyticsPage() {
+         <GroupChart title="Par sens (long / short)" trades={t} keyOf={(x) => (x.direction === 'long' ? 'Long' : 'Short')} currency={cur} />
+         <WeekdayChart trades={t} currency={cur} />
+         <div className="lg:col-span-2">
+-          <HalfHourChart trades={t} currency={cur} />
++          <EntrySlotChart trades={t} currency={cur} />
++        </div>
++        <div className="lg:col-span-2">
++          <ExitSlotChart trades={t} currency={cur} />
+         </div>
+       </div>
+     </div>
