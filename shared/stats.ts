@@ -310,7 +310,10 @@ export function timeSlot(time: string | null, step: SlotStep): string | null {
   return `${pad(Math.floor(k / 60))}:${pad(k % 60)}`
 }
 
-export function pnlBySlot(trades: Trade[], step: SlotStep): SplitStat[] {
-  const all = splitBy(trades, [BEFORE_LABEL, ...slotLabels(step)], (t) => timeSlot(t.entryTime, step))
+/** Moment du trade utilisé pour le regroupement : heure d'entrée ou heure de sortie. */
+export type SlotKind = 'entry' | 'exit'
+
+export function pnlBySlot(trades: Trade[], step: SlotStep, kind: SlotKind = 'entry'): SplitStat[] {
+  const all = splitBy(trades, [BEFORE_LABEL, ...slotLabels(step)], (t) => timeSlot(kind === 'exit' ? t.exitTime : t.entryTime, step))
   return all.filter((s) => s.name !== BEFORE_LABEL || s.trades > 0)
 }

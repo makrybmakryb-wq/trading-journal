@@ -42,7 +42,10 @@ export function AnalyticsPage() {
         <GroupChart title="Par sens (long / short)" trades={t} keyOf={(x) => (x.direction === 'long' ? 'Long' : 'Short')} currency={cur} />
         <WeekdayChart trades={t} currency={cur} />
         <div className="lg:col-span-2">
-          <TimeSlotChart trades={t} currency={cur} />
+          <TimeSlotChart trades={t} currency={cur} kind="entry" />
+        </div>
+        <div className="lg:col-span-2">
+          <TimeSlotChart trades={t} currency={cur} kind="exit" />
         </div>
       </div>
     </div>

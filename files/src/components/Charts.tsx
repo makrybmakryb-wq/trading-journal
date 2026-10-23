@@ -16,7 +16,7 @@ import {
   YAxis,
 } from 'recharts'
 import type { Trade } from '../../shared/types'
-import { equityCurve, groupBy, pnlBySlot, pnlByPeriod, pnlByWeekday, weekStart, SLOT_STEPS, type SlotStep, type Granularity, type GroupStat, type SplitStat } from '../../shared/stats'
+import { equityCurve, groupBy, pnlBySlot, pnlByPeriod, pnlByWeekday, weekStart, SLOT_STEPS, type SlotKind, type SlotStep, type Granularity, type GroupStat, type SplitStat } from '../../shared/stats'
 import { fmtDate, fmtMoney, fmtMonthKey, fmtPct } from '../lib/format'
 
 export const GAIN = '#22c55e'
@@ -312,9 +312,11 @@ export function WeekdayChart({ trades, currency }: { trades: Trade[]; currency: 
 
 const stepLabel = (n: number) => (n === 60 ? '1h' : `${n}m`)
 
-export function TimeSlotChart({ trades, currency }: { trades: Trade[]; currency: string }) {
+export function TimeSlotChart({ trades, currency, kind = 'entry' }: { trades: Trade[]; currency: string; kind?: SlotKind }) {
   const [step, setStep] = useState<SlotStep>(30)
-  const data = useMemo(() => pnlBySlot(trades, step), [trades, step])
+  const data = useMemo(() => pnlBySlot(trades, step, kind), [trades, step, kind])
+  const isExit = kind === 'exit'
+  const moment = isExit ? 'sortie' : 'entrée'
   return (
     <div>
       <div className="mb-2 flex items-center justify-end gap-1">
@@ -331,10 +333,10 @@ export function TimeSlotChart({ trades, currency }: { trades: Trade[]; currency:
         ))}
       </div>
       <SplitChart
-        title={`Profits et pertes par ${step === 60 ? 'heure' : `tranche de ${step} min`}`}
+        title={`Profits et pertes par ${step === 60 ? 'heure' : `tranche de ${step} min`} — ${moment}`}
         data={data}
         currency={currency}
-        hint={step === 5 ? 'Selon l’heure d’entrée, de 15:30 à 18:00. « Plus » = 18:00 et après.' : 'Selon l’heure d’entrée, de 15:30 à 20:00. « Plus » = après 20:00.'}
+        hint={step === 5 ? `Selon l’heure de ${moment}, de 15:30 à 18:00. « Plus » = 18:00 et après.` : `Selon l’heure de ${moment}, de 15:30 à 20:00. « Plus » = après 20:00.`}
       />
     </div>
   )
