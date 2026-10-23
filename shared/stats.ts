@@ -281,27 +281,36 @@ export const weekdayOf = (date: string) => WEEKDAY_LABELS[(new Date(date + 'T12:
 
 export const pnlByWeekday = (trades: Trade[]) => splitBy(trades, WEEKDAY_LABELS, (t) => weekdayOf(t.date))
 
-/** Tranches de 30 min de 15:30 à 20:00 ; tout ce qui est après 20:00 va dans « Plus ». */
+/** Tranches horaires configurables (5/10/15/30/60 min) de 15:30 à 20:00 ; après 20:00 → « Plus ». */
+export const SLOT_STEPS = [5, 10, 15, 30, 60] as const
+export type SlotStep = (typeof SLOT_STEPS)[number]
 const SLOT_START = 15 * 60 + 30
 const SLOT_END = 20 * 60
-export const HALF_HOUR_LABELS = (() => {
-  const l: string[] = []
-  for (let m = SLOT_START; m < SLOT_END; m += 30) l.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`)
-  return [...l, 'Plus']
-})()
+/** En 5 min, le graphique s'arrête à 18:00 (« Plus » = 18:00 et après) ; les autres intervalles restent jusqu'à 20:00. */
+const SLOT_END_5M = 18 * 60
+export const slotEnd = (step: number) => (step === 5 ? SLOT_END_5M : SLOT_END)
 export const BEFORE_LABEL = 'Avant'
+const slotOrigin = (step: number) => Math.floor(SLOT_START / step) * step
 
-/** Tranche d'une heure d'entrée « HH:MM ». Avant 15:30 → « Avant » (affichée seulement si utilisée). */
-export function halfHourSlot(time: string | null): string | null {
+export function slotLabels(step: SlotStep): string[] {
+  const l: string[] = []
+  for (let m = slotOrigin(step); m < slotEnd(step); m += step) l.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`)
+  return [...l, 'Plus']
+}
+
+/** Tranche d'une heure « HH:MM ». Avant le début → « Avant » (affichée seulement si utilisée). */
+export function timeSlot(time: string | null, step: SlotStep): string | null {
   const m = /^(\d{1,2}):(\d{2})$/.exec(time ?? '')
   if (!m) return null
   const mins = Number(m[1]) * 60 + Number(m[2])
-  if (mins < SLOT_START) return BEFORE_LABEL
-  if (mins >= SLOT_END) return 'Plus'
-  return HALF_HOUR_LABELS[Math.floor((mins - SLOT_START) / 30)]
+  const origin = slotOrigin(step)
+  if (mins < origin) return BEFORE_LABEL
+  if (mins >= slotEnd(step)) return 'Plus'
+  const k = origin + Math.floor((mins - origin) / step) * step
+  return `${pad(Math.floor(k / 60))}:${pad(k % 60)}`
 }
 
-export function pnlByHalfHour(trades: Trade[]): SplitStat[] {
-  const all = splitBy(trades, [BEFORE_LABEL, ...HALF_HOUR_LABELS], (t) => halfHourSlot(t.entryTime))
+export function pnlBySlot(trades: Trade[], step: SlotStep): SplitStat[] {
+  const all = splitBy(trades, [BEFORE_LABEL, ...slotLabels(step)], (t) => timeSlot(t.entryTime, step))
   return all.filter((s) => s.name !== BEFORE_LABEL || s.trades > 0)
 }

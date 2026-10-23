@@ -334,7 +334,7 @@ export function TimeSlotChart({ trades, currency }: { trades: Trade[]; currency:
         title={`Profits et pertes par ${step === 60 ? 'heure' : `tranche de ${step} min`}`}
         data={data}
         currency={currency}
-        hint="Selon l’heure d’entrée, de 15:30 à 20:00. « Plus » = après 20:00."
+        hint={step === 5 ? 'Selon l’heure d’entrée, de 15:30 à 18:00. « Plus » = 18:00 et après.' : 'Selon l’heure d’entrée, de 15:30 à 20:00. « Plus » = après 20:00.'}
       />
     </div>
   )

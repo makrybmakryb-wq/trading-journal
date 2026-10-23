@@ -286,12 +286,15 @@ export const SLOT_STEPS = [5, 10, 15, 30, 60] as const
 export type SlotStep = (typeof SLOT_STEPS)[number]
 const SLOT_START = 15 * 60 + 30
 const SLOT_END = 20 * 60
+/** En 5 min, le graphique s'arrête à 18:00 (« Plus » = 18:00 et après) ; les autres intervalles restent jusqu'à 20:00. */
+const SLOT_END_5M = 18 * 60
+export const slotEnd = (step: number) => (step === 5 ? SLOT_END_5M : SLOT_END)
 export const BEFORE_LABEL = 'Avant'
 const slotOrigin = (step: number) => Math.floor(SLOT_START / step) * step
 
 export function slotLabels(step: SlotStep): string[] {
   const l: string[] = []
-  for (let m = slotOrigin(step); m < SLOT_END; m += step) l.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`)
+  for (let m = slotOrigin(step); m < slotEnd(step); m += step) l.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`)
   return [...l, 'Plus']
 }
 
@@ -302,7 +305,7 @@ export function timeSlot(time: string | null, step: SlotStep): string | null {
   const mins = Number(m[1]) * 60 + Number(m[2])
   const origin = slotOrigin(step)
   if (mins < origin) return BEFORE_LABEL
-  if (mins >= SLOT_END) return 'Plus'
+  if (mins >= slotEnd(step)) return 'Plus'
   const k = origin + Math.floor((mins - origin) / step) * step
   return `${pad(Math.floor(k / 60))}:${pad(k % 60)}`
 }

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { computeTrade } from './calc'
 import { suggestQuantity } from './sizing'
-import { computeStats, equityCurve, pnlByPeriod, weekStart, periodRange, pnlByHalfHour, halfHourSlot, pnlByWeekday } from './stats'
+import { computeStats, equityCurve, pnlByPeriod, weekStart, periodRange, pnlBySlot, timeSlot, pnlByWeekday } from './stats'
 import type { Trade } from './types'
 
 // --- calc ---
@@ -67,11 +67,19 @@ assert.equal(weekStart('2026-10-21'), '2026-10-19') // mercredi → lundi
 assert.deepEqual(periodRange('month', new Date(2026, 1, 10)), { from: '2026-02-01', to: '2026-02-28' })
 
 // --- tranches horaires ---
-assert.equal(halfHourSlot('15:29'), 'Avant')
-assert.equal(halfHourSlot('15:30'), '15:30')
-assert.equal(halfHourSlot('19:59'), '19:30')
-assert.equal(halfHourSlot('20:00'), 'Plus')
-assert.equal(pnlByHalfHour([]).length, 10) // 15:30 … 19:30 (9 tranches) + « Plus »
+assert.equal(timeSlot('15:29', 30), 'Avant')
+assert.equal(timeSlot('15:34', 5), '15:30')
+assert.equal(timeSlot('15:47', 15), '15:45')
+assert.equal(timeSlot('16:19', 10), '16:10')
+assert.equal(timeSlot('19:59', 30), '19:30')
+assert.equal(timeSlot('15:40', 60), '15:00')
+assert.equal(timeSlot('17:59', 5), '17:55')
+assert.equal(timeSlot('18:00', 5), 'Plus')
+assert.equal(timeSlot('18:00', 30), '18:00')
+assert.equal(timeSlot('20:00', 30), 'Plus')
+assert.equal(pnlBySlot([], 5).length, 31) // 15:30 … 17:55 (30 tranches) + « Plus »
+assert.equal(pnlBySlot([], 30).length, 10)
+assert.equal(pnlBySlot([], 60).length, 6)
 const wd = pnlByWeekday([{ ...mk(1, '2026-01-05', 100) }, { ...mk(2, '2026-01-05', -40) }])
 assert.deepEqual(wd[0], { name: 'Lun', profit: 100, loss: 40, net: 60, trades: 2 })
 
