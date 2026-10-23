@@ -1,0 +1,61 @@
+diff --git a/files/shared/stats.test.ts b/files/shared/stats.test.ts
+index 58b04bf..f97b30d 100644
+--- a/files/shared/stats.test.ts
++++ b/files/shared/stats.test.ts
+@@ -73,8 +73,11 @@ assert.equal(timeSlot('15:47', 15), '15:45')
+ assert.equal(timeSlot('16:19', 10), '16:10')
+ assert.equal(timeSlot('19:59', 30), '19:30')
+ assert.equal(timeSlot('15:40', 60), '15:00')
+-assert.equal(timeSlot('20:00', 5), 'Plus')
+-assert.equal(pnlBySlot([], 5).length, 55)
++assert.equal(timeSlot('17:59', 5), '17:55')
++assert.equal(timeSlot('18:00', 5), 'Plus')
++assert.equal(timeSlot('18:00', 30), '18:00')
++assert.equal(timeSlot('20:00', 30), 'Plus')
++assert.equal(pnlBySlot([], 5).length, 31) // 15:30 … 17:55 (30 tranches) + « Plus »
+ assert.equal(pnlBySlot([], 30).length, 10)
+ assert.equal(pnlBySlot([], 60).length, 6)
+ const wd = pnlByWeekday([{ ...mk(1, '2026-01-05', 100) }, { ...mk(2, '2026-01-05', -40) }])
+diff --git a/files/shared/stats.ts b/files/shared/stats.ts
+index 6cb7639..acc04e6 100644
+--- a/files/shared/stats.ts
++++ b/files/shared/stats.ts
+@@ -286,12 +286,15 @@ export const SLOT_STEPS = [5, 10, 15, 30, 60] as const
+ export type SlotStep = (typeof SLOT_STEPS)[number]
+ const SLOT_START = 15 * 60 + 30
+ const SLOT_END = 20 * 60
++/** En 5 min, le graphique s'arrête à 18:00 (« Plus » = 18:00 et après) ; les autres intervalles restent jusqu'à 20:00. */
++const SLOT_END_5M = 18 * 60
++export const slotEnd = (step: number) => (step === 5 ? SLOT_END_5M : SLOT_END)
+ export const BEFORE_LABEL = 'Avant'
+ const slotOrigin = (step: number) => Math.floor(SLOT_START / step) * step
+ 
+ export function slotLabels(step: SlotStep): string[] {
+   const l: string[] = []
+-  for (let m = slotOrigin(step); m < SLOT_END; m += step) l.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`)
++  for (let m = slotOrigin(step); m < slotEnd(step); m += step) l.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`)
+   return [...l, 'Plus']
+ }
+ 
+@@ -302,7 +305,7 @@ export function timeSlot(time: string | null, step: SlotStep): string | null {
+   const mins = Number(m[1]) * 60 + Number(m[2])
+   const origin = slotOrigin(step)
+   if (mins < origin) return BEFORE_LABEL
+-  if (mins >= SLOT_END) return 'Plus'
++  if (mins >= slotEnd(step)) return 'Plus'
+   const k = origin + Math.floor((mins - origin) / step) * step
+   return `${pad(Math.floor(k / 60))}:${pad(k % 60)}`
+ }
+diff --git a/files/src/components/Charts.tsx b/files/src/components/Charts.tsx
+index be46f98..da20efb 100644
+--- a/files/src/components/Charts.tsx
++++ b/files/src/components/Charts.tsx
+@@ -334,7 +334,7 @@ export function TimeSlotChart({ trades, currency }: { trades: Trade[]; currency:
+         title={`Profits et pertes par ${step === 60 ? 'heure' : `tranche de ${step} min`}`}
+         data={data}
+         currency={currency}
+-        hint="Selon l’heure d’entrée, de 15:30 à 20:00. « Plus » = après 20:00."
++        hint={step === 5 ? 'Selon l’heure d’entrée, de 15:30 à 18:00. « Plus » = 18:00 et après.' : 'Selon l’heure d’entrée, de 15:30 à 20:00. « Plus » = après 20:00.'}
+       />
+     </div>
+   )
