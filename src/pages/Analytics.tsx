@@ -3,7 +3,7 @@ import { computeStats } from '../../shared/stats'
 import { useStore } from '../lib/store'
 import { fmtMoney, fmtPct, mainCurrency, pnlColor } from '../lib/format'
 import { PeriodFilter, usePeriod } from '../components/PeriodFilter'
-import { GroupChart, TimeSlotChart, WeekdayChart } from '../components/Charts'
+import { EntryExitCountChart, GroupChart, TimeSlotChart, WeekdayChart } from '../components/Charts'
 import { StatCard } from '../components/StatCard'
 
 export function AnalyticsPage() {
@@ -42,10 +42,10 @@ export function AnalyticsPage() {
         <GroupChart title="Par sens (long / short)" trades={t} keyOf={(x) => (x.direction === 'long' ? 'Long' : 'Short')} currency={cur} />
         <WeekdayChart trades={t} currency={cur} />
         <div className="lg:col-span-2">
-          <TimeSlotChart trades={t} currency={cur} kind="entry" />
+          <TimeSlotChart trades={t} currency={cur} />
         </div>
         <div className="lg:col-span-2">
-          <TimeSlotChart trades={t} currency={cur} kind="exit" />
+          <EntryExitCountChart trades={t} />
         </div>
       </div>
     </div>

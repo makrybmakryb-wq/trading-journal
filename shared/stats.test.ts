@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { computeTrade } from './calc'
 import { suggestQuantity } from './sizing'
-import { computeStats, equityCurve, pnlByPeriod, weekStart, periodRange, pnlBySlot, timeSlot, pnlByWeekday } from './stats'
+import { computeStats, equityCurve, pnlByPeriod, weekStart, periodRange, pnlBySlot, countBySlot, timeSlot, pnlByWeekday } from './stats'
 import type { Trade } from './types'
 
 // --- calc ---
@@ -80,13 +80,15 @@ assert.equal(timeSlot('20:00', 30), 'Plus')
 assert.equal(pnlBySlot([], 5).length, 31) // 15:30 … 17:55 (30 tranches) + « Plus »
 assert.equal(pnlBySlot([], 30).length, 10)
 assert.equal(pnlBySlot([], 60).length, 6)
-// --- tranches horaires : sortie ---
-const ex = (id: number, entry: string, exit: string | null, net: number): Trade => ({ ...mk(id, '2026-01-05', net), entryTime: entry, exitTime: exit }) as Trade
-const bySlotExit = pnlBySlot([ex(1, '15:40', '16:10', 100), ex(2, '15:40', '16:20', -40), ex(3, '15:40', null, 999)], 30, 'exit')
-assert.deepEqual(bySlotExit.find((x) => x.name === '16:00'), { name: '16:00', profit: 100, loss: 40, net: 60, trades: 2 })
-assert.equal(bySlotExit.find((x) => x.name === '15:30')?.trades, 0) // l'entrée n'est pas comptée
-assert.equal(pnlBySlot([ex(1, '15:40', '16:10', 100)], 30).find((x) => x.name === '15:30')?.trades, 1) // entrée par défaut
-assert.equal(pnlBySlot([], 5, 'exit').length, 31)
+// --- nombre d'entrées / sorties par tranche ---
+const ex = (id: number, entry: string | null, exit: string | null): Trade => ({ ...mk(id, '2026-01-05', 10), entryTime: entry, exitTime: exit }) as Trade
+const cnt = countBySlot([ex(1, '15:40', '16:10'), ex(2, '15:45', '16:20'), ex(3, '16:05', null), ex(4, '15:00', '18:30')], 30)
+assert.deepEqual(cnt.find((c) => c.name === '15:30'), { name: '15:30', entries: 2, exits: 0 })
+assert.deepEqual(cnt.find((c) => c.name === '16:00'), { name: '16:00', entries: 1, exits: 2 })
+assert.deepEqual(cnt.find((c) => c.name === 'Avant'), { name: 'Avant', entries: 1, exits: 0 })
+assert.deepEqual(cnt.find((c) => c.name === '18:30'), { name: '18:30', entries: 0, exits: 1 })
+assert.equal(countBySlot([], 30).length, 10)
+assert.equal(countBySlot([], 5).length, 31)
 const wd = pnlByWeekday([{ ...mk(1, '2026-01-05', 100) }, { ...mk(2, '2026-01-05', -40) }])
 assert.deepEqual(wd[0], { name: 'Lun', profit: 100, loss: 40, net: 60, trades: 2 })
 

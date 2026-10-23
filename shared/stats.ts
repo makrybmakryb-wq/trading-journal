@@ -310,10 +310,27 @@ export function timeSlot(time: string | null, step: SlotStep): string | null {
   return `${pad(Math.floor(k / 60))}:${pad(k % 60)}`
 }
 
-/** Moment du trade utilisé pour le regroupement : heure d'entrée ou heure de sortie. */
-export type SlotKind = 'entry' | 'exit'
-
-export function pnlBySlot(trades: Trade[], step: SlotStep, kind: SlotKind = 'entry'): SplitStat[] {
-  const all = splitBy(trades, [BEFORE_LABEL, ...slotLabels(step)], (t) => timeSlot(kind === 'exit' ? t.exitTime : t.entryTime, step))
+export function pnlBySlot(trades: Trade[], step: SlotStep): SplitStat[] {
+  const all = splitBy(trades, [BEFORE_LABEL, ...slotLabels(step)], (t) => timeSlot(t.entryTime, step))
   return all.filter((s) => s.name !== BEFORE_LABEL || s.trades > 0)
+}
+
+// ---------- Nombre d'entrées et de sorties par tranche horaire ----------
+
+export interface CountStat {
+  name: string
+  entries: number
+  exits: number
+}
+
+/** Compte, pour chaque tranche, combien de trades y sont entrés et combien en sont sortis. */
+export function countBySlot(trades: Trade[], step: SlotStep): CountStat[] {
+  const map = new Map<string, CountStat>([BEFORE_LABEL, ...slotLabels(step)].map((name) => [name, { name, entries: 0, exits: 0 }]))
+  for (const t of trades) {
+    const e = map.get(timeSlot(t.entryTime, step) ?? '')
+    if (e) e.entries += 1
+    const x = map.get(timeSlot(t.exitTime, step) ?? '')
+    if (x) x.exits += 1
+  }
+  return [...map.values()].filter((c) => c.name !== BEFORE_LABEL || c.entries + c.exits > 0)
 }
